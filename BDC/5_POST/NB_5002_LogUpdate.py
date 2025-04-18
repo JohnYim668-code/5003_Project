@@ -99,7 +99,7 @@ display(latestSuccessBatch)
 # COMMAND ----------
 
 #Output DBWSuccessBatchFileSummary
-data_location = logPath + 'DBWSuccessBatchFileSummary'
+data_location = storagePath + '999_log/batch_summary/' + 'DBWSuccessBatchFileSummary'
 
 #output & combine files into 1
 latestSuccessBatch.coalesce(1).write.mode("overwrite").csv(data_location,header=True)

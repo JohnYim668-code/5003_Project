@@ -148,10 +148,20 @@ completeBatch(item, batchID)
 
 # COMMAND ----------
 
-# # Load your Delta table
-# delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
-# usersessionTbl = spark.read.format("delta").load(delta_table_path)
+# Load your Delta table
+delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
+usersessionTbl = spark.read.format("delta").load(delta_table_path)
 # usersessionTbl.display()
+result_df = usersessionTbl.groupBy("PartitionYear", "PartitionMonth").agg(avg("USER_SESSION_DURATION").alias("AverageSessionDuration"))
+result_df.display()
+
+# COMMAND ----------
+
+# Load your Delta table
+delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
+usersessionTbl = spark.read.format("delta").load(delta_table_path)
+
+usersessionTbl.agg(avg("USER_SESSION_DURATION").alias("AverageSessionDuration")).collect()
 
 # COMMAND ----------
 
