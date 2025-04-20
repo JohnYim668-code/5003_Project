@@ -1,6 +1,4 @@
 # Databricks notebook source
-# dbutils.widgets.text("tableName", "sales_target") 
-# folderName = dbutils.widgets.get("tableName")
 folderName = 'sales_target'
 fileType = "csv"
 fileName = folderName + '.' + fileType
@@ -19,11 +17,7 @@ fileName = folderName + '.' + fileType
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -63,24 +57,10 @@ df = columnToUpperCase(df)
 outputDelta(df, historyPath + '/' + folderName + '/')
 # Optimize the Delta table after writing
 spark.sql("OPTIMIZE history.sales_target")
-# if ((folderName != 'rfidpcl_machine') and (folderName != 'rfidpcl_user')):
-#     outputParquet(df, historyPath + '/' + folderName + '/', folderName + '_' + region)
-# else:
-#     outputParquetOverwrite(df, historyPath + '/' + folderName + '/', folderName + '_' + region)
-
-# COMMAND ----------
-
-# Create or Append to table hist.<folderName>
-# createHistTable(df, folderName)
 
 # COMMAND ----------
 
 completeBatch(item, batchID)
-
-# COMMAND ----------
-
-# %sql
-# select * from tempdb.tmpbatchfilesummary;
 
 # COMMAND ----------
 

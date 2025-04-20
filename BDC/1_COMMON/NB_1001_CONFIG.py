@@ -1,16 +1,4 @@
 # Databricks notebook source
-#%pip install azure
-
-# COMMAND ----------
-
-#%pip install azure-storage-blob --upgrade
-
-# COMMAND ----------
-
-#%pip install azure-storage-file-datalake --pre
-
-# COMMAND ----------
-
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from azure.storage.blob import BlobServiceClient
@@ -102,11 +90,6 @@ lastMonth_Year = lastMonth_Date[0:4]
 lastMonth_Month = lastMonth_Date[4:6]
 lastMonth_Day = lastMonth_Date[6:8]
 lastYearMonth = int(lastMonth_Year + lastMonth_Month)
-
-# COMMAND ----------
-
-# dbSchema = 'tempdb'
-# validTableName = dbSchema+'.'+'tmpInvalidSummary'
 
 # COMMAND ----------
 

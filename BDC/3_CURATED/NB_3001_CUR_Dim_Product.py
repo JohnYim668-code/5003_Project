@@ -16,11 +16,7 @@ dbSchema  = 'tempdb'
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -162,6 +158,7 @@ else:
 delta_table_path = curPath_raw + '/Dimension/Dim_Product/'
 productTbl = spark.read.format("delta").load(delta_table_path)
 outputDeltaDim(productTbl, curPath_raw + "/Dimension/Dim_Product/") 
+spark.sql("OPTIMIZE curated.dim_product")
 
 # COMMAND ----------
 

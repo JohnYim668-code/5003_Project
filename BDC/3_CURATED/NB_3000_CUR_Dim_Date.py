@@ -11,11 +11,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 

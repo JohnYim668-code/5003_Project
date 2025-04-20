@@ -153,6 +153,24 @@ PARTITIONED BY (PARTITIONYEAR, PARTITIONMONTH, PARTITIONDAY)
 LOCATION 'abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Target'
 """)
 
+spark.sql(f"""
+CREATE EXTERNAL TABLE IF NOT EXISTS curated.Fact_Usersession_Cal
+ (
+    DATE_KEY TIMESTAMP, 
+    USER_SESSION string, 
+    MAX_EVENT_DATETIME timestamp, 
+    MIN_EVENT_DATETIME timestamp, 
+    USER_SESSION_DURATION double, 
+    PARTITIONYEAR int, 
+    PARTITIONMONTH int, 
+    PARTITIONDAY int ,
+    ETLUPDATEDDATETIME timestamp
+)
+USING delta
+PARTITIONED BY (PARTITIONYEAR, PARTITIONMONTH, PARTITIONDAY)
+LOCATION 'abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal'
+""")
+
 # COMMAND ----------
 
 # DA & ML Table Related External Table Schema
@@ -179,11 +197,6 @@ USING delta
 PARTITIONED BY (PARTITIONYEAR, PARTITIONMONTH, PARTITIONDAY)
 LOCATION 'abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/DA_RFM_Analysis'
 """)
-
-# COMMAND ----------
-
-# %sql
-# DROP TABLE IF EXISTS curated.Dim_product
 
 # COMMAND ----------
 
