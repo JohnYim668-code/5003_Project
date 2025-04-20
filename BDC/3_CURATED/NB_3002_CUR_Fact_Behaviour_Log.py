@@ -17,11 +17,7 @@ partitionField = "EVENT_DATETIME"
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -182,6 +178,7 @@ else:
 # delta_table_path = curPath_raw + '/Transaction/Fact_Behaviour_Log/'
 # behaviourTbl = spark.read.format("delta").load(delta_table_path)
 # outputDeltaTran(behaviourTbl, curPath_raw + "/Transaction/Fact_Behaviour_Log/") 
+# spark.sql("OPTIMIZE curated.fact_behaviour_log")
 
 # COMMAND ----------
 
@@ -203,3 +200,7 @@ completeBatch(item, batchID)
 #     DELETE FROM tempdb.tmpbatchfilesummary
 #     WHERE item = 'NB_3002_CUR_Fact_behaviour_log'
 # """)
+
+# COMMAND ----------
+
+

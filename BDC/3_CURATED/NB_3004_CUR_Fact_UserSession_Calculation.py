@@ -17,11 +17,7 @@ partitionField = "EVENT_DATE"
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -120,13 +116,6 @@ else:
 
 # COMMAND ----------
 
-# # Delta Record
-# delta_table_path = curPath_raw + '/Transaction/Fact_Behaviour_Log/'
-# behaviourTbl = spark.read.format("delta").load(delta_table_path)
-# outputDeltaTran(behaviourTbl, curPath_raw + "/Transaction/Fact_Behaviour_Log/") 
-
-# COMMAND ----------
-
 completeBatch(item, batchID)
 
 # COMMAND ----------
@@ -148,20 +137,10 @@ completeBatch(item, batchID)
 
 # COMMAND ----------
 
-# Load your Delta table
-delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
-usersessionTbl = spark.read.format("delta").load(delta_table_path)
+# # Load your Delta table
+# delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
+# usersessionTbl = spark.read.format("delta").load(delta_table_path)
 # usersessionTbl.display()
-result_df = usersessionTbl.groupBy("PartitionYear", "PartitionMonth").agg(avg("USER_SESSION_DURATION").alias("AverageSessionDuration"))
-result_df.display()
-
-# COMMAND ----------
-
-# Load your Delta table
-delta_table_path = "abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/Fact_Usersession_Cal"
-usersessionTbl = spark.read.format("delta").load(delta_table_path)
-
-usersessionTbl.agg(avg("USER_SESSION_DURATION").alias("AverageSessionDuration")).collect()
 
 # COMMAND ----------
 

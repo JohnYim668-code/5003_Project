@@ -16,6 +16,7 @@ from datetime import *
 import pytz
 import glob
 import os
+from pyspark.sql import functions as F
 
 # COMMAND ----------
 
@@ -101,23 +102,15 @@ def readParquet(rawPath):
          )
     return df
 
-
 # COMMAND ----------
 
-# #Read json
-# def readJson(rawPath, fileName):
-# #     df = spark.read.load(rawPath, format="json")     
-#     if loadLevel == 'init':
-#         df = spark.read.format("json").option("recursiveFileLookup", "true").option("header", "true").load(rawPath)
-#         counting = df.count()
-#     elif loadLevel == 'delta':
-#         # Check path is valid or not
-#         fileExistCheckPath(rawPath + dateStr + '/' +timeStr + '/')
-#         df = spark.read.format("json").option("recursiveFileLookup", "true").option("header", "true").load(rawPath + dateStr + '/' +timeStr + '/') 
-#         counting = df.count()
-# #         list_of_files = glob.glob(rawPath + dateStr + '/*') # * means all if need specific format then *.csv
-# #         df = max(list_of_files, key=os.path.getctime)
-#     return df, counting
+#Read json
+def readJson(rawPath, fileName):
+    # Check path is valid or not
+    fileExistCheckPath(rawPath + dateStr + '/' +timeStr + '/')
+    df = spark.read.format("json").option("recursiveFileLookup", "true").option("header", "true").load(rawPath + dateStr + '/' +timeStr + '/') 
+    counting = df.count()
+    return df, counting
 
 # COMMAND ----------
 
@@ -126,53 +119,6 @@ def readCSV(rawPath):
     df = (spark.read.format('csv').option('header', 'true').option('multiline', 'true').option('escape','"').load(rawPath))
     counting = df.count()
     return df, counting
-
-# COMMAND ----------
-
-# ddlSchema_source_file = StructType([
-#     StructField('batchID',StringType()),
-#     StructField('date',StringType()),
-#     StructField('startTime',StringType()),
-#     StructField('notebook',StringType()),
-#     StructField('file',StringType()),
-#     StructField('exist',StringType())
-# ])
-
-# existTableName = 'tmpSourceFileExistSummary' + region
-
-# # Read different file type
-# def readfile(rawPath, fileType, fileName):
-#     dbSchema = 'tempdb'
-#     if fileExist(rawPath):
-#         if fileType == "json":
-#             df = readJson(rawPath, fileName)
-# #         elif fileType == "csv":
-# #             df = readCSV(rawPath)
-# #         elif fileType == "parquet":
-# #             df = readParquet(rawPath)
-#         #append the exist record if table exist
-#         List_FileExist = [(batchID, runDate, startTime, item, folderName, 'Y')]
-#         df_FileExist = spark.createDataFrame(List_FileExist, ddlSchema_source_file)
-#         if spark._jsparkSession.catalog().tableExists(dbSchema, existTableName):
-#             df_FileExist.write.mode("append").option("mergeSchema", "true").option("path", storagePath + '/0_config/rfidepc/' + region + '/batch_summary/source_file_summary_temp/').saveAsTable(dbSchema+'.'+existTableName)
-#         #create table if it does not exist
-#         else:
-#             df_FileExist.write.mode("overwrite").option("overwriteSchema", "true").option("path", storagePath + '/0_config/rfidepc/' + region + '/batch_summary/source_file_summary_temp/').saveAsTable(dbSchema+'.'+existTableName) 
-#         if len(df.head(1)) > 0:
-#             return df
-#         else:
-#             completeBatch(item, region, batchID)
-#             dbutils.notebook.exit("no existing record")
-#     else:
-#         #append the invalid record if table not exist
-#         List_FileExist = [(batchID, runDate, startTime, item, folderName, 'N')] 
-#         df_FileExist = spark.createDataFrame(List_FileExist, ddlSchema_source_file)
-#         if spark._jsparkSession.catalog().tableExists(dbSchema, existTableName):
-#             df_FileExist.write.mode("append").option("mergeSchema", "true").option("path", storagePath + '/0_config/rfidepc/' + region + '/batch_summary/source_file_summary_temp/').saveAsTable(dbSchema+'.'+existTableName)
-#         #create table if it does not exist
-#         else:
-#             df_FileExist.write.mode("overwrite").option("overwriteSchema", "true").option("path", storagePath + '/0_config/rfidepc/' + region + '/batch_summary/source_file_summary_temp/').saveAsTable(dbSchema+'.'+existTableName)
-#         dbutils.notebook.exit("path not exist")
 
 # COMMAND ----------
 
@@ -196,8 +142,8 @@ def readfile(rawPath, fileType, fileName):
             df, counting = readJson(rawPath, fileName)
         elif fileType == "csv":
             df, counting = readCSV(rawPath)
-#         elif fileType == "parquet":
-#             df = readParquet(rawPath)
+        elif fileType == "parquet":
+            df = readParquet(rawPath)
         #append the exist record if table exist
         List_FileExist = [(batchID, runDate, startTime, item, counting, folderName, 'Y')]
         df_FileExist = spark.createDataFrame(List_FileExist, ddlSchema_source_file)
@@ -275,18 +221,7 @@ def outputDeltaDim(output, path):
     .option("overwriteSchema", "true")\
     .save(path)
 
-    # Optimize the Delta table after writing
-    spark.sql("OPTIMIZE history.behaviour_log")
-
 # COMMAND ----------
-
-# #output (+name+".parquet")
-# def outputParquetTran(output, path, name):
-#     output.write.partitionBy('PartitionYear','PartitionMonth','PartitionDay')\
-#       .format("delta") \
-#       .mode("overwrite") \
-#       .option("path", path)\
-#       .saveAsTable("curated." + name)
 
 #output
 def outputDeltaTran(output, path):
@@ -301,15 +236,6 @@ def outputDeltaTran(output, path):
           .format("delta")\
           .mode("overwrite")\
           .save(path)
-
-#     # Optimize the Delta table after writing
-#     spark.sql("OPTIMIZE history.behaviour_log")
-
-# COMMAND ----------
-
-# # #output (+name+".parquet")
-# def outputParquetTranCool(output, path, name):
-#      output.write.partitionBy("PartitionYear","PartitionMonth","PartitionDay").format('delta').mode('append').option("mergeSchema", "true").option("path", path).saveAsTable("curated." + name)
 
 # COMMAND ----------
 
@@ -361,8 +287,6 @@ def checkNull(dataDate,checkTable,checkField,primaryKey,filterCriteria="1=1"):
         return data
 
 # COMMAND ----------
-
-#data, dupKey = checkDuplicate(dateStr,'Dimension','ETLUPDATEDDATETIME','history.rfidpcl_machine' + '_' + region,machineTbl,'COMPUTERNAME,REGION', 'COMPUTERNAME,REGION', ([('COMPUTERNAME'),('REGION')]))
 
 # Check Duplicates
 def checkDuplicate(dataDate,tableType,timeColumn,tableName,checkTable,checkField,primaryKey,PK,filterCriteria="1=1"):

@@ -107,6 +107,21 @@ behaviourTbl = behaviourTbl.select('EVENT_DATE', 'EVENT_TYPE', 'PRODUCT_ID', 'PR
 # Creating the week number column
 behaviourTbl = behaviourTbl.withColumn("WEEK_NUMBER", weekofyear(to_timestamp(behaviourTbl.EVENT_DATE)))
 
+# Creating the year column
+behaviourTbl = behaviourTbl.withColumn("YEAR", year(to_timestamp(behaviourTbl.EVENT_DATE)))
+
+# Get minimum year
+min_year = behaviourTbl.agg(min(year(to_timestamp("EVENT_DATE"))).alias("MIN_YEAR")).collect()[0]["MIN_YEAR"]
+
+# Add seq_of_week_no column
+behaviourTbl = behaviourTbl.withColumn(
+    "SEQ_OF_WEEK_NUMBER",
+    when((col("YEAR") == min_year) & (month(to_timestamp(col("EVENT_DATE"))) == 12) & (col("WEEK_NUMBER") == 1), 2)
+    .when(col("YEAR") == min_year, 1)
+    .otherwise(2)
+)
+
+
 # Filter DataFrames based on event_type
 purchaseDf = behaviourTbl.filter(col('EVENT_TYPE') == 'purchase')
 cartDf = behaviourTbl.filter(col('EVENT_TYPE') == 'cart')
@@ -129,8 +144,11 @@ aggDemandTbl = demandTbl.groupBy("PRODUCT_ID", "WEEK_NUMBER").agg(
 # Create Sales per week
 aggDemandTbl = aggDemandTbl.withColumn("SALES", (col("SALES") / col("DAYS_PURCHASED")) * 7)
 
-# Create Previous week number
-aggDemandTbl = aggDemandTbl.withColumn('PREVIOUS_WEEK_NUMBER', col('WEEK_NUMBER') - 1)
+# Create Previous week number - Map WEEK_NUMBER = 1 to 52
+aggDemandTbl = aggDemandTbl.withColumn(
+    'PREVIOUS_WEEK_NUMBER',
+    when(col("WEEK_NUMBER") == 1, 52).otherwise(col('WEEK_NUMBER') - 1)
+)
 
 # Perform a left join with itself
 selfDemandTbl = aggDemandTbl.alias('DC1').join(
@@ -144,91 +162,93 @@ selfDemandTbl = aggDemandTbl.alias('DC1').join(
 
 selfDemandTbl.cache()
 
-# selfDemandTbl.filter(col('PRODUCT_ID') == '1004870').display()
+behaviourTbl.filter(col('PRODUCT_ID') == '1004870').display()
 
 # COMMAND ----------
 
-import numpy as np
-import pandas as pd
-import xgboost as xgb
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.regression import LinearRegression, GBTRegressor
-from pyspark.ml.evaluation import RegressionEvaluator
-from scipy import stats
-
-# # Top 10 records with best sales
-# top_10_sales = selfDemandTbl.orderBy(col("SALES").desc()).limit(10)
-# # Bottom 10 records with worst sales
-# bottom_10_sales = selfDemandTbl.orderBy(col("SALES").asc()).limit(10)
-# filteredselfDemandTbl = top_10_sales.union(bottom_10_sales)
-filteredselfDemandTbl = selfDemandTbl.filter(col('PRODUCT_ID').isin(['1003306', '1004227', '1004230', '1004240', '1004246']))
-
-# Assuming elasticity_df is a Spark DataFrame already
-elasticity_dicts = []
-
-# Loop through unique product IDs
-for product_id in filteredselfDemandTbl.select("PRODUCT_ID").distinct().rdd.flatMap(lambda x: x).collect():
-    entry = {}
-
-    # Filter DataFrame for the current product
-    entry_df = filteredselfDemandTbl.filter(col("PRODUCT_ID") == product_id)
-
-    # Create new columns for y and X
-    entry_df = entry_df.withColumn("y", log(col("SALES"))) \
-                       .withColumn("X", log(col("AVG_PRICE")))
-
-    # Assemble features into a vector
-    assembler = VectorAssembler(inputCols=["X"], outputCol="features")
-    feature_df = assembler.transform(entry_df)
-
-    # Fit the Linear Regression model
-    lr = LinearRegression(featuresCol="features", labelCol="y")
-    lr_model = lr.fit(feature_df)
-
-    # Get model metrics
-    rsquared = lr_model.summary.r2
-    # coefficient_pvalue = lr_model.summary.pValues[0] if lr_model.summary.pValues else None
-    intercept = lr_model.intercept
-    slope = lr_model.coefficients[0] if lr_model.coefficients else 0
-
-    # Collect data for p-value calculation
-    predictions = lr_model.transform(feature_df).select("prediction", "y").toPandas()
-    X = predictions["prediction"].values
-    y = predictions["y"].values
-
-    # Calculate residuals and the standard error
-    residuals = y - X
-    residual_std = np.std(residuals)
-    n = len(y)  # Number of observations
-    p = 1  # Number of predictors
-
-    # Calculate t-statistic and p-value
-    if slope != 0 and residual_std > 0:
-        t_stat = slope / lr_model.summary.coefficientStandardErrors[0]
-        p_value = 2 * (1 - stats.t.cdf(np.abs(t_stat), df=n-p-1))
-        # t_statistic = slope / (residual_std / np.sqrt(n))
-        # p_value = 2 * (1 - stats.t.cdf(np.abs(t_statistic), df= n - p - 1)) 
-    else:
-        t_statistic = np.nan
-        p_value = float('nan')  # Ensure it is a float
-
-    # # Calculate mean values
-    # mean_price = entry_df.agg(mean("X")).first()[0]
-    # mean_quantity = entry_df.agg(mean("y")).first()[0]
-
-    # Store results
-    print(product_id, ':', 'slope:', slope, 'R2 Score:', rsquared, 'coefficient_pvalue:', p_value)
-    entry['PRODUCT'] = product_id
-    entry['ELASTICITY'] = float(slope) if slope is not None else float('nan')
-    entry['R2_SCORE'] = float(rsquared) if rsquared is not None else float('nan')
-    entry['COEFFICIENT_PVALUE'] = float(p_value) if p_value is not None else float('nan')
-    elasticity_dicts.append(entry)
-
-# Convert results to DataFrame
-elasticity_chart = spark.createDataFrame(elasticity_dicts)
-
-# Show results
-elasticity_chart.display()
+# MAGIC %pip install xgboost
+# MAGIC
+# MAGIC import numpy as np
+# MAGIC import pandas as pd
+# MAGIC import xgboost as xgb
+# MAGIC from pyspark.ml.feature import VectorAssembler
+# MAGIC from pyspark.ml.regression import LinearRegression, GBTRegressor
+# MAGIC from pyspark.ml.evaluation import RegressionEvaluator
+# MAGIC from scipy import stats
+# MAGIC
+# MAGIC # # Top 10 records with best sales
+# MAGIC # top_10_sales = selfDemandTbl.orderBy(col("SALES").desc()).limit(10)
+# MAGIC # # Bottom 10 records with worst sales
+# MAGIC # bottom_10_sales = selfDemandTbl.orderBy(col("SALES").asc()).limit(10)
+# MAGIC # filteredselfDemandTbl = top_10_sales.union(bottom_10_sales)
+# MAGIC filteredselfDemandTbl = selfDemandTbl.filter(col('PRODUCT_ID').isin(['1003306', '1004227', '1004230', '1004240', '1004246']))
+# MAGIC
+# MAGIC # Assuming elasticity_df is a Spark DataFrame already
+# MAGIC elasticity_dicts = []
+# MAGIC
+# MAGIC # Loop through unique product IDs
+# MAGIC for product_id in filteredselfDemandTbl.select("PRODUCT_ID").distinct().rdd.flatMap(lambda x: x).collect():
+# MAGIC     entry = {}
+# MAGIC
+# MAGIC     # Filter DataFrame for the current product
+# MAGIC     entry_df = filteredselfDemandTbl.filter(col("PRODUCT_ID") == product_id)
+# MAGIC
+# MAGIC     # Create new columns for y and X
+# MAGIC     entry_df = entry_df.withColumn("y", log(col("SALES"))) \
+# MAGIC                        .withColumn("X", log(col("AVG_PRICE")))
+# MAGIC
+# MAGIC     # Assemble features into a vector
+# MAGIC     assembler = VectorAssembler(inputCols=["X"], outputCol="features")
+# MAGIC     feature_df = assembler.transform(entry_df)
+# MAGIC
+# MAGIC     # Fit the Linear Regression model
+# MAGIC     lr = LinearRegression(featuresCol="features", labelCol="y")
+# MAGIC     lr_model = lr.fit(feature_df)
+# MAGIC
+# MAGIC     # Get model metrics
+# MAGIC     rsquared = lr_model.summary.r2
+# MAGIC     # coefficient_pvalue = lr_model.summary.pValues[0] if lr_model.summary.pValues else None
+# MAGIC     intercept = lr_model.intercept
+# MAGIC     slope = lr_model.coefficients[0] if lr_model.coefficients else 0
+# MAGIC
+# MAGIC     # Collect data for p-value calculation
+# MAGIC     predictions = lr_model.transform(feature_df).select("prediction", "y").toPandas()
+# MAGIC     X = predictions["prediction"].values
+# MAGIC     y = predictions["y"].values
+# MAGIC
+# MAGIC     # Calculate residuals and the standard error
+# MAGIC     residuals = y - X
+# MAGIC     residual_std = np.std(residuals)
+# MAGIC     n = len(y)  # Number of observations
+# MAGIC     p = 1  # Number of predictors
+# MAGIC
+# MAGIC     # Calculate t-statistic and p-value
+# MAGIC     if slope != 0 and residual_std > 0:
+# MAGIC         t_stat = slope / lr_model.summary.coefficientStandardErrors[0]
+# MAGIC         p_value = 2 * (1 - stats.t.cdf(np.abs(t_stat), df=n-p-1))
+# MAGIC         # t_statistic = slope / (residual_std / np.sqrt(n))
+# MAGIC         # p_value = 2 * (1 - stats.t.cdf(np.abs(t_statistic), df= n - p - 1)) 
+# MAGIC     else:
+# MAGIC         t_statistic = np.nan
+# MAGIC         p_value = float('nan')  # Ensure it is a float
+# MAGIC
+# MAGIC     # # Calculate mean values
+# MAGIC     # mean_price = entry_df.agg(mean("X")).first()[0]
+# MAGIC     # mean_quantity = entry_df.agg(mean("y")).first()[0]
+# MAGIC
+# MAGIC     # Store results
+# MAGIC     print(product_id, ':', 'slope:', slope, 'R2 Score:', rsquared, 'coefficient_pvalue:', p_value)
+# MAGIC     entry['PRODUCT'] = product_id
+# MAGIC     entry['ELASTICITY'] = float(slope) if slope is not None else float('nan')
+# MAGIC     entry['R2_SCORE'] = float(rsquared) if rsquared is not None else float('nan')
+# MAGIC     entry['COEFFICIENT_PVALUE'] = float(p_value) if p_value is not None else float('nan')
+# MAGIC     elasticity_dicts.append(entry)
+# MAGIC
+# MAGIC # Convert results to DataFrame
+# MAGIC elasticity_chart = spark.createDataFrame(elasticity_dicts)
+# MAGIC
+# MAGIC # Show results
+# MAGIC elasticity_chart.display()
 
 # COMMAND ----------
 
@@ -249,22 +269,23 @@ elasticity_chart = elasticity_chart.withColumn(
 # COMMAND ----------
 
 # Purchase Perspective: Group by product_id and week_id, aggregating the mean price and count of events
-purchaseTbl = purchaseDf.groupBy('PRODUCT_ID', 'WEEK_NUMBER').agg(
+purchaseTbl = purchaseDf.groupBy('PRODUCT_ID','SEQ_OF_WEEK_NUMBER', 'WEEK_NUMBER').agg(
     mean('PRICE').alias('MEAN_PRICE'),
     count('EVENT_TYPE').alias('SALES_OCCURRENCE')
 )
 
 # Define window specifications for rolling calculations
-window_1w = Window.partitionBy('PRODUCT_ID').orderBy('WEEK_NUMBER').rowsBetween(-1, 0)
-window_2w = Window.partitionBy('PRODUCT_ID').orderBy('WEEK_NUMBER').rowsBetween(-2, 0)
-window_4w = Window.partitionBy('PRODUCT_ID').orderBy('WEEK_NUMBER').rowsBetween(-4, 0)
+window_1w = Window.partitionBy('PRODUCT_ID').orderBy('SEQ_OF_WEEK_NUMBER','WEEK_NUMBER').rowsBetween(-1, 0)
+window_2w = Window.partitionBy('PRODUCT_ID').orderBy('SEQ_OF_WEEK_NUMBER','WEEK_NUMBER').rowsBetween(-2, 0)
+window_4w = Window.partitionBy('PRODUCT_ID').orderBy('SEQ_OF_WEEK_NUMBER','WEEK_NUMBER').rowsBetween(-4, 0)
 
 # Calculate sales for the last 1, 2, and 4 weeks
 purchaseTbl = purchaseTbl.withColumn('SALES_OCC_PREV_1W', sum(col('SALES_OCCURRENCE')).over(window_1w) - col('SALES_OCCURRENCE')) \
                          .withColumn('SALES_OCC_PREV_2W', sum(col('SALES_OCCURRENCE')).over(window_2w) - col('SALES_OCCURRENCE')) \
                          .withColumn('SALES_OCC_PREV_4W', sum(col('SALES_OCCURRENCE')).over(window_4w) - col('SALES_OCCURRENCE'))
 
-purchaseTbl.display()
+#purchaseTbl.display()
+purchaseTbl.filter(col('PRODUCT_ID') == '1004870').display()
 
 # COMMAND ----------
 

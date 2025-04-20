@@ -17,11 +17,7 @@ partitionField = "ETLUPDATEDDATETIME"
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
-
-# COMMAND ----------
-
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -30,9 +26,9 @@ item = text.replace(dbwPath+'4_DA&ML/','')
 
 # COMMAND ----------
 
-# batchID = getBatchIdForOutput(item)
-# batchID = int(batchID)
-batchID = 1
+batchID = getBatchIdForOutput(item)
+batchID = int(batchID)
+# batchID = 1
 
 # COMMAND ----------
 

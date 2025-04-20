@@ -17,7 +17,7 @@ partitionField = 'ETLUPDATEDDATETIME'
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
@@ -186,6 +186,8 @@ resultTbl.write \
          .format("delta")\
          .mode("append")\
          .save(delta_table_path)
+
+spark.sql("OPTIMIZE curated.fact_target")
 
 # COMMAND ----------
 
