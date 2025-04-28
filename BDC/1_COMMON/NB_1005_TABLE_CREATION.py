@@ -198,6 +198,26 @@ PARTITIONED BY (PARTITIONYEAR, PARTITIONMONTH, PARTITIONDAY)
 LOCATION 'abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/DA_RFM_Analysis'
 """)
 
+spark.sql(f"""
+CREATE EXTERNAL TABLE IF NOT EXISTS curated.ML_sales_prediction
+ (
+    WEEK_NUMBER_CYCLE long,
+    WEEK_NUMBER long,
+    PRODUCT_ID string,
+    MEAN_PRICE double,
+    ACTUAL_SALES long,
+    SALES_PREDICTION_XG long,
+    SALES_PREDICTION_GB long,
+    SALES_PREDICTION_RF long,
+    ELASTICITY double,
+    LR_R2_SCORE double,
+    COEFFICIENT_PVALUE double
+)
+USING delta
+PARTITIONED BY (PRODUCT_ID, WEEK_NUMBER)
+LOCATION 'abfss://edp-bdc@bigdatacompute01.dfs.core.windows.net/3_curated/Transaction/ML_Sales_Prediction'
+""")
+
 # COMMAND ----------
 
 
