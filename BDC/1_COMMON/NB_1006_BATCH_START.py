@@ -20,11 +20,11 @@ folderName = ''
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1005_MAP_TABLE_LIST
+# MAGIC %run ../1_COMMON/NB_1005_TABLE_CREATION
 
 # COMMAND ----------
 
-# MAGIC %run ../1_COMMON/NB_1006_TABLE_CREATION
+#%run ../1_COMMON/NB_1006_BATCH_START
 
 # COMMAND ----------
 
